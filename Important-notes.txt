@@ -1,4 +1,17 @@
 Tiles-Selling-Business-Management-System
+**********************************************************************************************
+On a new PC, they simply:
+Windows:
+    Download/clone the project
+    Double-click setup.bat
+    Wait for it to complete
+    Run flutter run
+macOS/Linux:
+    Download/clone the project
+    Run: bash setup.sh
+    Wait for it to complete
+    Run: flutter run
+**********************************************************************************************
 
 Possible existing system:
 - Customer Information
