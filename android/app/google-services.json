@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "1028727617166",
+    "firebase_url": "https://tiles-selling-bms-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "tiles-selling-bms",
+    "storage_bucket": "tiles-selling-bms.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1028727617166:android:64c02e4c891a2d20c03bdf",
+        "android_client_info": {
+          "package_name": "com.example.tiles_selling_bms"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBT9JXSi9hhI2dEGbHAgN3uss2ami3NBu8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

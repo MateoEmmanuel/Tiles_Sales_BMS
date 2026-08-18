@@ -1,0 +1,564 @@
+Tiles-Selling-Business-Management-System
+
+Possible existing system:
+- Customer Information
+- Tile Products & Types
+- Tile Dimensions and Designs
+- Price Per Box or Piece
+- Quanttity Sold
+- Sales Transactions
+- Dates of Sales
+- Inventory/Stock
+- Suppliers Information
+- Purchase and Restock Rocording
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Proposed System:
+> Business Dashboard
+    - Today's Sales
+    - Today's Transactions
+    - Current Inventory Value
+    -  Low Stock Products
+    - Out-of-Stock Products
+    - Pending Customer Orders/Reservations
+    - Pending Supplier Purchases
+    - Top-Selling Tiles
+    - Recent Transactions
+    - Sales Trend
+
+> Information Management (People)
+    - Customer Information View & Management
+    - User/Staff Information Management
+        < User & Access Management
+        < Audit Trail / Activity Log
+            "Since inventory equals money, you need a log showing who changed 
+            what. If stock drops by 10 boxes, the manager needs to see: 
+            "User [Staff_Name] created an Adjustment Log for 10 broken 
+            boxes on [Date].""
+
+    - Supplier Information Management
+    
+> Information Management (Products)
+    - Tile Products & Specification Management
+        > Tile Name/Code
+        > Brand
+        > Design/Color
+        > Size
+        > Thickness
+        > Finish?
+        > Pieces per Box
+        > Coverage per Box
+            EX:
+                1 box = 4 Pieces
+                1 piece = 0.36 Sqm
+                Then: 1 box = 1.44 Sqm
+        > Price Per Box
+        > Price Per Sqm/Sqft
+        
+    - Inventory Management System
+        ~ Live Stock Status
+            < Quanttity on Hand
+                "The exact number of boxes or square meters/feet currently 
+                sitting physically in your warehouse or storage."
+
+            < Allocated Stock
+                "Stock that is already sold to a customer but has not been 
+                picked up or delivered yet."
+
+            < Available Stock
+                "The true number you can safely sell to a new customer 
+                (Quantity on Hand minus Allocated Stock basically)."
+            
+        ~ Unit of Measure Converter System
+            "A tool that automatically converts Boxes to Square Meters 
+            (Sqm) / Square Feet (Sqft) and vice versa. Customers buy by 
+            area, but you stock by the box."
+
+        ~ Smart Alerts and Reordering
+            < Reorder Point
+                "A safety threshold you set for each tile variant."
+
+            < Low Stock Alerts
+                "Automatic visual warnings when a tile's available stock dips 
+                below its reorder point, prompting you to restock."
+
+            < Out-Of-Stock Alerts
+            "Automatic visual warnings when a tile's available stock dips 
+                zero, prompting you to restock ASAP."
+
+        ~ Restock Logging
+            "just the normal logging of new tiles in the warehouse or storage."
+
+        ~ Stock Movement Logs
+            < Restock Logs
+            < Usage/Sales Logs (Quanttity Sold)
+            < Adjustment Logs
+            < Damaged/Defective Stock Logs
+            < Returned Stock Logs
+
+    - Sales & Transaction Management
+        ~ Sales Transaction Recording
+        ~ Sales Invoice/Receipt Generation
+        ~ Customer Order/Reservation Management
+            "It's simply the staff recording: ["Customer Juan bought 20 boxes, 
+            but hasn't picked them up yet."] That's exactly what your Allocated
+             Stock concept is for."
+
+            < Pending
+            < Reserved
+            < Paid
+            < Ready for Pickup
+            < Delivered/Released
+            < Cancelled
+
+        ~ Payment Recording
+        ~ Discount Management
+        ~ Sales History
+
+    - Purchasing & Supplier Management
+        ~ Purchase Order Recording
+        ~ Restock/Purchase Records
+        ~ Supplier Price History
+        ~ Supplier Delivery Records
+        ~ Purchase History
+
+    - Business Reports
+        ~ Sales Reports
+        ~ Inventory Reports
+        ~ Discrepancy & Shrinkage Report (Interactive Audit)
+            < Active System Inventory List View
+            < Manual Physical Count Input Field
+            < Dynamic Financial Variance Calculator
+            < Report Actions
+                + Print Report
+                + Export PDF
+                + Save/Finalize Count
+
+        ~ Stock Movement Reports
+        ~ Purchase Reports
+        ~ Supplier Reports
+        ~ Best-Selling Products
+        ~ Slow-Moving Products
+        ~ Inventory Value
+        ~ Revenue/Profit Reports
+
+*****************************************************************************
+
+Proposed System in Groups:
+> Admin
+"The Admin handles system administration, staff access, 
+master data, inventory oversight, and business monitoring."
+
+    ~ User & Access Management
+        < User/Staff Information Management
+            + User & Access Management
+            + Create/Update Staff Accounts
+            + Assign User Roles
+            + Manage Permissions
+            + Activate/Deactivate Accounts
+
+        < Audit Trail / Activity Log
+            + User who performed the action
+            + Action performed
+            + Affected record
+            + Date/Time
+            + Previous/New value when applicable
+
+    ~ Product Management
+        < Tile Products & Specification Management
+            + Tile Name/Code
+            + Brand
+            + Design/Color
+            + Size
+            + Thickness
+            + Finish
+            + Pieces per Box
+            + Coverage per Box
+            + Price per Box
+            + Price per Sqm/Sqft
+
+    ~ Inventory Management
+        < Live Stock Status
+            + Quantity on Hand
+            + Allocated Stock
+            + Available Stock
+
+        < Unit of Measure Converter
+            + Box <-> Sqm
+            + Box <-> Sqft
+
+        < Smart Alerts and Reordering
+            + Reorder Point
+            + Low Stock Alerts
+            + Out-of-Stock Alerts
+
+        < Stock Receiving / Restock Logging
+            "Records that the physical goods actually arrived 
+            and were added to inventory."
+
+        < Stock Movement Logs
+            + Restock
+            + Sales/Usage
+            + Adjustments
+            + Damaged/Defective
+            + Returns
+
+        < Inventory Adjustment / Reconciliation
+    
+    ~ Supplier Management
+        < Supplier Information Management
+        < Supplier Price History
+        < Supplier Delivery Records
+        < Purchase History
+        < Purchase Order Management
+    
+    ~ Business Dashboard
+        < Admin gets the full dashboard:
+            + Today's Sales
+            + Today's Transactions
+            + Current Inventory Value
+            + Low Stock Products
+            + Out-of-Stock Products
+            + Pending Customer Orders/Reservations
+            + Pending Supplier Purchases
+            + Top-Selling Tiles
+            + Recent Transactions
+            + Sales Trend
+
+    ~ Business Reports
+        < Sales Reports
+        < Inventory Reports
+        < Discrepancy & Shrinkage Reports
+        < Stock Movement Reports
+        < Purchase Reports
+        < Supplier Reports
+        < Best-Selling Products
+        < Slow-Moving Products
+        < Inventory Value
+        < Revenue/Profit Reports
+
+    ~ Report Actions
+        < Print Report
+        < Export PDF
+        < Save/Finalize Physical Count
+
+
+> Office
+"The Office handles customers, suppliers, sales-related records, 
+purchasing, orders, and day-to-day business operations."
+
+    ~ Office Dashboard
+        < Today's Sales
+        < Today's Transactions
+        < Pending Orders/Reservations
+        < Pending Pre-Orders
+        < Pending Supplier Purchases
+        < Low Stock Products
+        < Recent Transactions
+
+    ~ Customer Management
+        < Customer Information View & Management
+        < Customer Order/Reservation Management
+            + Pending
+            + Reserved
+            + Paid
+            + Ready for Pickup
+            + Delivered/Released
+            + Cancelled
+        < Pre-Order Management 
+            + Customer Information
+            + Tile/Product
+            + Quantity / Required Sqm
+            + Estimated Price
+            + Deposit/Down Payment
+            + Expected Availability Date
+            + Pre-Order Status
+
+    ~ Sales & Transaction Management
+        < Sales Transaction Recording
+        < Sales Invoice/Receipt Generation
+        < Payment Recording
+        < Discount Management
+        < Sales History
+
+    ~ Purchasing & Supplier Management
+        < Supplier Information Management
+        < Purchase Order Recording
+        < Restock/Purchase Records
+        < Supplier Price History
+        < Supplier Delivery Records
+        < Purchase History
+    
+    ~ Inventory
+        "Office can view inventory information:"
+        
+        < Quantity on Hand
+        < Allocated Stock
+        < Available Stock
+        < Product Information
+        < Unit of Measure Converter
+        < Low Stock Alerts
+        < Out-of-Stock Alerts
+        < Purchase/Restock Recording
+            "Records the business transaction with the supplier."
+            -------------------------------------------------------
+            But depending on your business rules, Office shouldn't 
+            necessarily be allowed to directly modify inventory.
+
+            For example:
+            Office sees that Tile A has 20 boxes available.
+
+            But:
+            Warehouse/Admin performs the actual stock adjustment.
+            -------------------------------------------------------
+
+
+> Cashier
+"The Cashier should have the most limited access because their primary 
+responsibility is processing sales and payments."
+
+    ~ Sales & Transaction Management
+        < Sales Transaction Recording
+        < Create Pre-Order        
+        < Payment Recording
+        < Discount Management
+        < Sales Invoice/Receipt Generation
+        < Sales History
+    
+    ~ Product & Inventory Lookup
+        < Tile/Product Information
+        < Price per Box
+        < Price per Sqm/Sqft
+        < Available Stock
+        < Allocated Stock
+        < Unit of Measure Converter
+        < Low Stock Warning
+        < Out-of-Stock Warning
+
+
+Group	|	Main Responsibility
+-------------------------------------------------------------------------------------------------------
+Admin	|	System control, inventory control, users, suppliers, reports, business oversight
+Office	|	Customers, orders/pre-orders, purchasing, supplier transactions, daily business operations
+Cashier	|	Sales, payments, receipts, customer transactions, basic pre-order creation
+
+
+Firestore Database
+│
+├── users/
+│   └── {userId}
+│       ├── firstName
+│       ├── lastName
+│       ├── email
+│       ├── role
+│       ├── status
+│       ├── createdAt
+│       └── updatedAt
+│
+├── customers/
+│   └── {customerId}
+│       ├── customerCode
+│       ├── firstName
+│       ├── lastName
+│       ├── contactNumber
+│       ├── address
+│       ├── email
+│       ├── status
+│       ├── createdAt
+│       └── updatedAt
+│
+├── suppliers/
+│   └── {supplierId}
+│       ├── supplierCode
+│       ├── supplierName
+│       ├── contactPerson
+│       ├── contactNumber
+│       ├── email
+│       ├── address
+│       ├── status
+│       ├── createdAt
+│       └── updatedAt
+│
+├── products/
+│   └── {productId}
+│       ├── productCode
+│       ├── productName
+│       ├── brand
+│       ├── design
+│       ├── color
+│       ├── size
+│       ├── thickness
+│       ├── finish
+│       ├── piecesPerBox
+│       ├── coveragePerBox
+│       ├── pricePerBox
+│       ├── pricePerSqm
+│       ├── pricePerSqft
+│       ├── reorderPoint
+│       ├── status
+│       ├── createdAt
+│       └── updatedAt
+│
+├── inventory/
+│   └── {productId}
+│       ├── quantityOnHand
+│       ├── allocatedStock
+│       ├── availableStock
+│       ├── lastRestockedAt
+│       ├── updatedAt
+│       └── updatedBy
+│
+├── stock_movements/
+│   └── {movementId}
+│       ├── productId
+│       ├── movementType
+│       ├── quantity
+│       ├── referenceId
+│       ├── reason
+│       ├── performedBy
+│       ├── createdAt
+│       └── notes
+│
+├── sales/
+│   └── {saleId}
+│       ├── transactionNumber
+│       ├── customerId
+│       ├── cashierId
+│       ├── subtotal
+│       ├── discount
+│       ├── totalAmount
+│       ├── amountPaid
+│       ├── change
+│       ├── paymentStatus
+│       ├── transactionStatus
+│       ├── createdAt
+│       └── updatedAt
+│
+├── sales/{saleId}/items/
+│   └── {itemId}
+│       ├── productId
+│       ├── quantity
+│       ├── unitPrice
+│       ├── unitOfMeasure
+│       ├── coverage
+│       ├── discount
+│       └── totalPrice
+│
+├── orders/
+│   └── {orderId}
+│       ├── customerId
+│       ├── createdBy
+│       ├── orderType
+│       ├── status
+│       ├── totalAmount
+│       ├── depositAmount
+│       ├── expectedDate
+│       ├── notes
+│       ├── createdAt
+│       └── updatedAt
+│
+├── orders/{orderId}/items/
+│   └── {itemId}
+│       ├── productId
+│       ├── quantity
+│       ├── requiredSqm
+│       ├── estimatedPrice
+│       └── unitOfMeasure
+│
+├── purchase_orders/
+│   └── {purchaseOrderId}
+│       ├── purchaseOrderNumber
+│       ├── supplierId
+│       ├── createdBy
+│       ├── status
+│       ├── totalAmount
+│       ├── expectedDeliveryDate
+│       ├── createdAt
+│       └── updatedAt
+│
+├── purchase_orders/{purchaseOrderId}/items/
+│   └── {itemId}
+│       ├── productId
+│       ├── quantityOrdered
+│       ├── unitCost
+│       ├── totalCost
+│       └── quantityReceived
+│
+├── stock_receipts/
+│   └── {receiptId}
+│       ├── purchaseOrderId
+│       ├── supplierId
+│       ├── receivedBy
+│       ├── receivedDate
+│       ├── status
+│       ├── notes
+│       └── createdAt
+│
+├── stock_receipts/{receiptId}/items/
+│   └── {itemId}
+│       ├── productId
+│       ├── quantityReceived
+│       ├── unitCost
+│       └── condition
+│
+├── payments/
+│   └── {paymentId}
+│       ├── saleId
+│       ├── customerId
+│       ├── amount
+│       ├── paymentMethod
+│       ├── referenceNumber
+│       ├── receivedBy
+│       └── createdAt
+│
+├── inventory_adjustments/
+│   └── {adjustmentId}
+│       ├── productId
+│       ├── adjustmentType
+│       ├── quantity
+│       ├── reason
+│       ├── physicalCount
+│       ├── systemCount
+│       ├── variance
+│       ├── performedBy
+│       ├── approvedBy
+│       └── createdAt
+│
+├── physical_counts/
+│   └── {countId}
+│       ├── countedBy
+│       ├── finalizedBy
+│       ├── status
+│       ├── countDate
+│       ├── totalVariance
+│       └── createdAt
+│
+├── physical_counts/{countId}/items/
+│   └── {itemId}
+│       ├── productId
+│       ├── systemQuantity
+│       ├── physicalQuantity
+│       ├── variance
+│       └── varianceValue
+│
+├── audit_logs/
+│   └── {logId}
+│       ├── userId
+│       ├── userName
+│       ├── action
+│       ├── collection
+│       ├── documentId
+│       ├── previousValue
+│       ├── newValue
+│       ├── reason
+│       └── createdAt
+│
+└── notifications/
+    └── {notificationId}
+        ├── type
+        ├── productId
+        ├── message
+        ├── priority
+        ├── isRead
+        ├── createdAt
+        └── resolvedAt
