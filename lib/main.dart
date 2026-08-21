@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'services/firebase_service.dart';
-import 'screens/connection_status_screen.dart';
+import 'screens/products_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -10,7 +10,7 @@ void main() async {
   try {
     await firebaseService.initialize();
   } catch (e) {
-    print('Failed to initialize Firebase: $e');
+    debugPrint('Failed to initialize Firebase: $e');
   }
 
   runApp(const MyApp());
@@ -28,7 +28,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       debugShowCheckedModeBanner: false,
-      home: const ConnectionStatusScreen(),
+      home: const ProductsScreen(),
     );
   }
 }
