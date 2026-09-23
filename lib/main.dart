@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'services/firebase_service.dart';
-import 'screens/products_screen.dart';
+import 'screens/office_shell.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,9 +26,10 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
         useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFFF7F8FC),
       ),
       debugShowCheckedModeBanner: false,
-      home: const ProductsScreen(),
+      home: const OfficeShell(),
     );
   }
 }

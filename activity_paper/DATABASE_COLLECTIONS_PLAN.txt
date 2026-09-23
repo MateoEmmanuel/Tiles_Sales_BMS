@@ -1,0 +1,351 @@
+TILES SELLING BUSINESS MANAGEMENT SYSTEM
+FIREBASE FIRESTORE DATA DICTIONARY
+
+This is a Firebase Firestore data dictionary. Each collection contains documents.
+Firebase Authentication manages passwords and login credentials. Passwords must
+not be stored in the Firestore users collection.
+
+Firebase Authentication
+-----------------------
+Provider: Email and Password
+Account roles: admin_owner, office_staff, cashier
+
+The Firebase Authentication UID is used as the document ID in the users
+collection. The UID is also saved in createdBy, updatedBy, and performedBy fields.
+
+Data types used: String, Number, Boolean, Timestamp, Map, and Reference.
+
+SCOPE DECISIONS FOR THIS PRIVATE OFFICE SYSTEM
+-----------------------------------------------
+This application is an internal office tool, not a public customer portal.
+Collections should be added only when the related office workflow is actually
+needed.
+
+- suppliers: Keep. Office staff need supplier records for sourcing and restocking.
+- customers: Optional. Keep only if the office records customer names for sales,
+    reservations, invoices, delivery, or sales history. It is not for public login.
+- pending_reservation_orders: Optional. Add only if the office tracks customer
+    reservations or pending customer requests. The name clearly identifies this
+    as a pending or reserved customer order collection.
+- purchase_orders: Removed. Supplier ordering remains manual by phone, in person,
+    or email. The app may record the resulting stock receipt later.
+- payments: Optional. Add when the system records customer payments or balances.
+- notifications: In-app operational notifications only. They show low-stock,
+    out-of-stock, or approval warnings for office, cashier, or admin_owner role
+    categories. They are not personal messages and do not send SMS.
+- app_settings: Optional. Owner/Admin can edit all settings. Office staff can edit
+    selected operational settings such as display and low-stock preferences.
+    Firebase security rules should enforce these permissions later.
+
+Recommended first office version:
+users, products, inventory, suppliers, stock_movements, and audit_logs.
+
+The office can continue ordering from suppliers manually by phone, in person,
+or email. Automated email ordering is not required and should only be added if
+the business later confirms that suppliers accept structured email orders.
+
+===============================================================================
+COLLECTION: users
+===============================================================================
+
+Field             Type       Required   Description
+uid               String     Yes        Firebase Authentication user ID
+fullName          String     Yes        Complete name of the staff member
+email             String     Yes        Login email address
+role              String     Yes        admin_owner, office_staff, or cashier
+phoneNumber       String     No         Staff contact number
+isActive          Boolean    Yes        Whether the account can log in
+createdAt         Timestamp  Yes        Date and time the account was created
+updatedAt         Timestamp  Yes        Date and time the profile was changed
+lastLoginAt       Timestamp  No         Most recent successful login
+createdBy         String     Yes        UID of the admin who created the account
+
+===============================================================================
+COLLECTION: products
+===============================================================================
+
+Field             Type       Required   Description
+productName       String     Yes        Name of the tile product
+brand             String     Yes        Tile manufacturer or brand
+design            String     No         Tile design or pattern
+color             String     No         Tile color
+size              String     Yes        Tile dimensions
+thickness         Number     No         Tile thickness in millimeters
+finish            String     No         Surface finish
+piecesPerBox      Number     Yes        Number of pieces in one box
+coveragePerBox    Number     Yes        Square-meter coverage per box
+pricePerBox       Number     Yes        Selling price for one box
+pricePerSqm       Number     No         Selling price per square meter
+pricePerSqft      Number     No         Selling price per square foot
+reorderPoint      Number     Yes        Minimum stock before reordering
+maximumStock      Number     No         Optional upper stock level for overstock warnings
+status            String     Yes        active or inactive
+createdAt         Timestamp  Yes        Date and time the product was created
+updatedAt         Timestamp  Yes        Date and time the product was changed
+createdBy         String     Yes        UID of the user who created it
+updatedBy         String     No         UID of the last user who changed it
+
+===============================================================================
+COLLECTION: inventory
+===============================================================================
+
+Field             Type       Required   Description
+productId         Reference  Yes        Related products document
+quantityOnHand    Number     Yes        Physical quantity in storage
+allocatedQuantity Number     Yes        Quantity reserved for customers
+availableQuantity Number     Yes        Quantity on hand minus allocated stock
+unit              String     Yes        box, piece, sqm, or sqft
+reorderPoint      Number     Yes        Minimum safe quantity
+stockStatus       String     Yes        in_stock, low_stock, or out_of_stock
+lastCountedAt     Timestamp  No         Date and time stock was physically counted
+lastUpdatedAt     Timestamp  Yes        Date and time inventory last changed
+updatedBy         String     Yes        UID of the user who changed the record
+
+Compatibility with the current app:
+The existing inventory code uses current_stock and product_dID. Keep these names
+temporarily or migrate them carefully to quantityOnHand and productId.
+
+===============================================================================
+COLLECTION: customers
+===============================================================================
+
+Field             Type       Required   Description
+fullName          String     Yes        Customer or company name
+phoneNumber       String     Yes        Customer contact number
+email             String     No         Customer email address
+address           String     No         Customer address
+customerType      String     Yes        individual, contractor, or business
+notes             String     No         Additional customer information
+lastPurchase      Timestamp  No         Date and time of the customer's latest purchase
+balanceDue        Number     Yes        Current unpaid customer balance
+createdAt         Timestamp  Yes        Date and time the record was created
+updatedAt         Timestamp  Yes        Date and time the record was changed
+createdBy         String     Yes        UID of the user who created it
+
+Customers are internal office records only. Customers do not log in or use the
+application directly.
+The balanceDue field records any amount not fully paid after a completed
+transaction. New payments reduce this balance until it reaches zero.
+
+===============================================================================
+COLLECTION: suppliers
+===============================================================================
+
+Field             Type       Required   Description
+companyName       String     Yes        Supplier company name
+contactPerson     String     Yes        Supplier representative
+phoneNumber       String     Yes        Supplier contact number
+email             String     No         Supplier email address
+paymentTerms      String     No         Agreed payment terms
+notes             String     No         Additional supplier information
+status            String     Yes        active or inactive
+createdAt         Timestamp  Yes        Date and time the record was created
+updatedAt         Timestamp  Yes        Date and time the record was changed
+createdBy         String     Yes        UID of the user who created it
+
+===============================================================================
+COLLECTION: sales
+===============================================================================
+
+Field             Type       Required   Description
+salesId           String     Yes        Physical receipt identifier for official records
+customerId        Reference  No         Related customers document
+customerName      String     No         Customer name saved with the transaction
+cashierId         String     Yes        UID of the cashier or staff member
+saleDate          Timestamp  Yes        Date and time of the sale
+subtotal          Number     Yes        Amount before discount
+discountAmount    Number     Yes        Discount applied to the sale
+taxAmount         Number     No         Tax amount, if applicable
+totalAmount       Number     Yes        Final amount to pay
+amountPaid        Number     Yes        Amount received from the customer
+changeAmount      Number     Yes        Change returned to the customer
+paymentStatus     String     Yes        unpaid, partial, paid, or refunded
+saleStatus        String     Yes        pending, completed, cancelled, refunded
+balanceDue        Number     Yes        Remaining unpaid amount after the transaction
+balanceStatus     String     No         paid or not_paid; omit balance UI when no balance exists
+balancePaidAt     Timestamp  No         Date and time the customer fully paid the balance
+notes             String     No         Additional transaction notes
+createdAt         Timestamp  Yes        Date and time the sale was created
+updatedAt         Timestamp  No         Date and time the sale was changed
+createdBy         String     Yes        UID of the user who created it
+
+Payment note:
+If amountPaid is less than totalAmount, the transaction remains recorded and
+balanceDue stores the unpaid amount for the customer. A later payment updates
+both the payment record and the customer's balanceDue.
+
+Subcollection: sales/{saleId}/items
+Field             Type       Required   Description
+productId         Reference  Yes        Related products document
+productName       String     Yes        Product name at time of sale
+quantity          Number     Yes        Quantity sold
+unit              String     Yes        box, piece, sqm, or sqft
+unitPrice         Number     Yes        Price used for the sale
+discountAmount    Number     No         Discount for this item
+lineTotal         Number     Yes        Quantity multiplied by unit price
+
+===============================================================================
+COLLECTION: payments
+===============================================================================
+
+Field             Type       Required   Description
+saleId            Reference  Yes        Related sales document
+customerId        Reference  No         Related customers document
+customerName      String     No         Customer name saved with the payment
+activityType      String     No         balance_created or balance_paid
+paymentDate       Timestamp  Yes        Date and time payment was received
+amount            Number     Yes        Amount paid
+method            String     Yes        cash, bank_transfer, card, or e_wallet
+referenceNumber   String     No         Bank or payment reference
+receivedBy        String     Yes        UID of the cashier or staff member
+notes             String     No         Payment notes
+createdAt         Timestamp  Yes        Date and time the payment was created
+
+===============================================================================
+COLLECTION: pending_reservation_orders
+===============================================================================
+
+Field             Type       Required   Description
+customerId        Reference  Yes        Related customers document
+orderDate         Timestamp  Yes        Date and time the order was created
+requestedDate     Timestamp  No         Requested pickup or delivery date
+status            String     Yes        pending, reserved, paid, ready_for_pickup,
+                                       delivered, or cancelled
+subtotal          Number     Yes        Order amount before discount
+discountAmount    Number     Yes        Discount applied to the order
+totalAmount       Number     Yes        Final order amount
+allocatedQuantity Number     Yes        Stock reserved for this order
+notes             String     No         Order notes
+createdAt         Timestamp  Yes        Date and time the order was created
+updatedAt         Timestamp  Yes        Date and time the order was changed
+createdBy         String     Yes        UID of the user who created it
+
+Subcollection: pending_reservation_orders/{reservationId}/items
+Field             Type       Required   Description
+productId         Reference  Yes        Related products document
+productName       String     Yes        Product name at time of order
+quantity          Number     Yes        Quantity ordered
+unit              String     Yes        box, piece, sqm, or sqft
+unitPrice         Number     Yes        Price used for the order
+lineTotal         Number     Yes        Quantity multiplied by unit price
+
+===============================================================================
+COLLECTION: stock_movements
+===============================================================================
+
+Field                    Type       Required   Description
+productId                Reference  Yes        Related products document
+movementType             String     Yes        restock, sale, or damaged
+quantity                 Number     Yes        Quantity changed
+unit                     String     Yes        box, piece, sqm, or sqft
+previousQuantity         Number     Yes        Quantity before the movement
+newQuantity              Number     Yes        Quantity after the movement
+relatedSaleId            Reference  No         Related sales document
+supplierId               Reference  No         Supplier associated with the restock
+deliveryReference       String     No         Manual receipt or delivery reference
+reason                   String     Yes        Explanation for the movement
+movementDate             Timestamp  Yes        Date and time of the movement
+performedBy              String     Yes        UID of the user who performed it
+createdAt                Timestamp  Yes        Date and time the log was created
+
+===============================================================================
+COLLECTION: supplier_price_history
+===============================================================================
+
+Field             Type       Required   Description
+supplierId        Reference  Yes        Related suppliers document
+productId         Reference  Yes        Related products document
+unitCost          Number     Yes        Supplier cost at that time
+currency          String     Yes        Currency code, such as PHP or USD
+effectiveDate     Timestamp  Yes        Date the price became effective
+recordedBy        String     Yes        UID of the user who recorded it
+notes             String     No         Price history notes
+createdAt         Timestamp  Yes        Date and time the record was created
+
+===============================================================================
+COLLECTION: audit_logs
+===============================================================================
+
+Field             Type       Required   Description
+userId            String     Yes        UID of the user who performed the action
+userName          String     Yes        User name saved for report viewing
+userRole          String     Yes        Role at the time of the action
+action            String     Yes        create, update, delete, login, logout,
+                                       approve, or adjust
+collectionName    String     Yes        Collection that was affected
+documentId        String     Yes        Document that was affected
+description       String     Yes        Human-readable action description
+previousData      Map        No         Important values before the change
+newData           Map        No         Important values after the change
+createdAt         Timestamp  Yes        Date and time of the action
+
+Audit logs should be append-only. Normal users must not edit or delete them.
+
+===============================================================================
+COLLECTION: notifications
+===============================================================================
+
+Field             Type       Required   Description
+recipientRole     String     Yes        office, cashier, or admin_owner
+type              String     Yes        low_stock, out_of_stock, or approval_needed
+title             String     Yes        Notification title
+message           String     Yes        Notification message
+relatedProductId  Reference  No         Related products document
+relatedRecordId   Reference  No         Related sale, reservation, or damage record
+isRead            Boolean    Yes        Whether the user has read it
+createdAt         Timestamp  Yes        Date and time the notice was created
+
+===============================================================================
+COLLECTION: app_settings
+===============================================================================
+
+Document ID: settings
+
+Field                         Type       Required   Description
+businessName                  String     Yes        Business name
+businessLogoUrl               String     No         Public logo URL; built-in icon is the fallback
+businessAddress               String     No         Business address
+businessPhone                 String     No         Business phone number
+businessEmail                 String     No         Business email address
+defaultCurrency               String     Yes        Default currency, such as PHP
+defaultUnit                   String     Yes        Default inventory unit
+lowStockNotificationsEnabled  Boolean    Yes        Enable low-stock notices
+updatedAt                     Timestamp  Yes        Date and time settings changed
+updatedBy                     String     Yes        UID of the user who changed it
+
+Settings permissions:
+- Owner/Admin can edit all application settings.
+- Office staff can edit only selected operational settings, such as display and
+    low-stock preferences.
+- Cashiers can view settings needed for their work but cannot edit them.
+ROLE ACCESS SUMMARY
+===============================================================================
+
+Admin/Owner:
+- Full access to all business collections
+- Create and disable user accounts
+- Assign roles and manage permissions
+- Approve inventory and damage records
+- View reports and audit logs
+
+Office Staff:
+- Manage products, customers, suppliers, and reservations
+- View and update inventory where permitted
+- View business records and reports
+- Cannot manage user roles or delete audit logs
+
+Cashier:
+- View products and prices
+- Create sales and record payments
+- View customer information needed for sales
+- Process customer reservations
+- Cannot manage users, suppliers, settings, or audit logs
+
+Recommended implementation order:
+1. Firebase Authentication and users
+2. products and inventory
+3. customers and suppliers
+4. sales and payments
+5. stock_movements
+6. pending_reservation_orders, if reservations are needed
+7. audit_logs, notifications, and app_settings

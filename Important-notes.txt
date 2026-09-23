@@ -370,7 +370,6 @@ Firestore Database
 │
 ├── customers/
 │   └── {customerId}
-│       ├── customerCode
 │       ├── firstName
 │       ├── lastName
 │       ├── contactNumber
@@ -382,19 +381,16 @@ Firestore Database
 │
 ├── suppliers/
 │   └── {supplierId}
-│       ├── supplierCode
 │       ├── supplierName
 │       ├── contactPerson
 │       ├── contactNumber
 │       ├── email
-│       ├── address
 │       ├── status
 │       ├── createdAt
 │       └── updatedAt
 │
 ├── products/
 │   └── {productId}
-│       ├── productCode
 │       ├── productName
 │       ├── brand
 │       ├── design
@@ -480,7 +476,6 @@ Firestore Database
 │
 ├── purchase_orders/
 │   └── {purchaseOrderId}
-│       ├── purchaseOrderNumber
 │       ├── supplierId
 │       ├── createdBy
 │       ├── status

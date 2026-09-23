@@ -5,17 +5,16 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:tiles_selling_bms/main.dart';
 
 void main() {
-  testWidgets('products screen loads', (WidgetTester tester) async {
+  testWidgets('office overview loads', (WidgetTester tester) async {
     await tester.pumpWidget(const MyApp());
 
-    expect(find.text('Products'), findsOneWidget);
-    expect(find.byType(TextField), findsOneWidget);
-    expect(find.text('Add product'), findsOneWidget);
+    expect(find.text('Overview'), findsOneWidget);
+    expect(find.text('Add product'), findsNothing);
+    expect(find.text('Stock Inventory'), findsNothing);
   });
 }
