@@ -46,7 +46,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '1028727617166',
     projectId: 'tiles-selling-bms',
     authDomain: 'tiles-selling-bms.firebaseapp.com',
-    databaseURL: 'https://tiles-selling-bms-default-rtdb.asia-southeast1.firebasedatabase.app',
+    databaseURL:
+        'https://tiles-selling-bms-default-rtdb.asia-southeast1.firebasedatabase.app',
     storageBucket: 'tiles-selling-bms.firebasestorage.app',
     measurementId: 'G-4J04JWRM12',
   );
@@ -56,7 +57,8 @@ class DefaultFirebaseOptions {
     appId: '1:1028727617166:android:64c02e4c891a2d20c03bdf',
     messagingSenderId: '1028727617166',
     projectId: 'tiles-selling-bms',
-    databaseURL: 'https://tiles-selling-bms-default-rtdb.asia-southeast1.firebasedatabase.app',
+    databaseURL:
+        'https://tiles-selling-bms-default-rtdb.asia-southeast1.firebasedatabase.app',
     storageBucket: 'tiles-selling-bms.firebasestorage.app',
   );
 
@@ -65,7 +67,8 @@ class DefaultFirebaseOptions {
     appId: '1:1028727617166:ios:6d219ac839bcfaa6c03bdf',
     messagingSenderId: '1028727617166',
     projectId: 'tiles-selling-bms',
-    databaseURL: 'https://tiles-selling-bms-default-rtdb.asia-southeast1.firebasedatabase.app',
+    databaseURL:
+        'https://tiles-selling-bms-default-rtdb.asia-southeast1.firebasedatabase.app',
     storageBucket: 'tiles-selling-bms.firebasestorage.app',
     iosBundleId: 'com.example.tilesSellingBms',
   );
@@ -75,7 +78,8 @@ class DefaultFirebaseOptions {
     appId: '1:1028727617166:ios:6d219ac839bcfaa6c03bdf',
     messagingSenderId: '1028727617166',
     projectId: 'tiles-selling-bms',
-    databaseURL: 'https://tiles-selling-bms-default-rtdb.asia-southeast1.firebasedatabase.app',
+    databaseURL:
+        'https://tiles-selling-bms-default-rtdb.asia-southeast1.firebasedatabase.app',
     storageBucket: 'tiles-selling-bms.firebasestorage.app',
     iosBundleId: 'com.example.tilesSellingBms',
   );
@@ -86,7 +90,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '1028727617166',
     projectId: 'tiles-selling-bms',
     authDomain: 'tiles-selling-bms.firebaseapp.com',
-    databaseURL: 'https://tiles-selling-bms-default-rtdb.asia-southeast1.firebasedatabase.app',
+    databaseURL:
+        'https://tiles-selling-bms-default-rtdb.asia-southeast1.firebasedatabase.app',
     storageBucket: 'tiles-selling-bms.firebasestorage.app',
     measurementId: 'G-XTB0TNRLXY',
   );

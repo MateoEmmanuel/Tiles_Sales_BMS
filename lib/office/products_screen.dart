@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 import '../services/firebase_service.dart';
 import 'connection_status_screen.dart';
+import 'office_print_dialogs.dart';
 
 class ProductsScreen extends StatefulWidget {
   const ProductsScreen({
@@ -27,6 +28,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
   final _firebaseService = FirebaseService();
   final _searchController = TextEditingController();
   String _searchTerm = '';
+  List<DocumentSnapshot<Map<String, dynamic>>> _latestProducts = const [];
+  Map<String, Map<String, dynamic>> _latestInventory = const {};
 
   @override
   void dispose() {
@@ -304,6 +307,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
                             if (_inventoryProductId(item.data()) != null)
                               _inventoryProductId(item.data())!: item.data(),
                         };
+                    _latestProducts = productSnapshot.data!.docs;
+                    _latestInventory = inventoryByProduct;
                     if (widget.showDashboard && !widget.showProductList) {
                       return _buildDashboardPanel(
                         productSnapshot.data!.docs,
@@ -353,36 +358,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 );
               },
             ),
-      floatingActionButton: widget.showFloatingActions
-          ? Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                FloatingActionButton.extended(
-                  onPressed: _openProductForm,
-                  backgroundColor: Colors.indigo,
-                  foregroundColor: Colors.white,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add product'),
-                ),
-                const SizedBox(width: 10),
-                FloatingActionButton.extended(
-                  onPressed: _openStockInventory,
-                  backgroundColor: Colors.indigo,
-                  foregroundColor: Colors.white,
-                  icon: const Icon(Icons.inventory_2_outlined),
-                  label: const Text('Stock Inventory'),
-                ),
-                const SizedBox(width: 10),
-                FloatingActionButton.extended(
-                  onPressed: _openDamageReport,
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                  icon: const Icon(Icons.warning_amber_outlined),
-                  label: const Text('Report damage'),
-                ),
-              ],
-            )
-          : null,
     );
   }
 
@@ -470,39 +445,30 @@ class _ProductsScreenState extends State<ProductsScreen> {
           ],
         ),
         const SizedBox(height: 18),
-        _sectionHeading('Stock quantity by product', 'Compare available units'),
-        const SizedBox(height: 10),
-        _chartCard(
-          products.isEmpty
-              ? const Center(child: Text('No product stock data yet'))
-              : _StockBarChart(
-                  products: products,
-                  stocks: stocks,
-                  reorderPoints: [
-                    for (final product in products) _reorderPoint(product),
-                  ],
-                  formatNumber: _formatNumber,
-                ),
-        ),
-        const SizedBox(height: 24),
         _sectionHeading('Stock status', 'Products grouped by availability'),
         const SizedBox(height: 10),
-        _chartCard(
-          _StockDonutChart(
-            inStock: products.length - lowStock - outOfStock,
-            lowStock: lowStock,
-            outOfStock: outOfStock,
-          ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 2,
+              child: _chartCard(
+                _StockDonutChart(
+                  inStock: products.length - lowStock - outOfStock,
+                  lowStock: lowStock,
+                  outOfStock: outOfStock,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(flex: 3, child: _lowStockTable(products, inventory)),
+          ],
         ),
         const SizedBox(height: 24),
-        _sectionHeading('Low stock products', 'Restock these products first'),
-        const SizedBox(height: 10),
-        _lowStockTable(products, inventory),
-        const SizedBox(height: 28),
-        _sectionHeading(
-          'Sales analytics',
-          'Income and outstanding customer balances',
-        ),
+        if (products.isEmpty)
+          _chartCard(const Center(child: Text('No product stock data yet'))),
+        const SizedBox(height: 4),
+        _sectionHeading('Sales analytics', 'Income and completed payments'),
         const SizedBox(height: 10),
         const _SalesAnalyticsPanel(),
       ],
@@ -533,29 +499,55 @@ class _ProductsScreenState extends State<ProductsScreen> {
             children: [
               _sectionHeading('Products', 'Search and manage your catalog'),
               const SizedBox(height: 14),
-              TextField(
-                controller: _searchController,
-                onChanged: (value) =>
-                    setState(() => _searchTerm = value.trim().toLowerCase()),
-                decoration: InputDecoration(
-                  hintText: 'Search products...',
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _searchTerm.isEmpty
-                      ? null
-                      : IconButton(
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() => _searchTerm = '');
-                          },
-                          icon: const Icon(Icons.clear),
-                        ),
-                  filled: true,
-                  fillColor: Colors.indigo.withValues(alpha: 0.04),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final search = TextField(
+                    controller: _searchController,
+                    onChanged: (value) => setState(
+                      () => _searchTerm = value.trim().toLowerCase(),
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Search products...',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _searchTerm.isEmpty
+                          ? null
+                          : IconButton(
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _searchTerm = '');
+                              },
+                              icon: const Icon(Icons.clear),
+                            ),
+                      filled: true,
+                      fillColor: Colors.indigo.withValues(alpha: 0.04),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  );
+                  final actions = _buildInventoryActions();
+                  if (!widget.showFloatingActions ||
+                      constraints.maxWidth < 900) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        search,
+                        if (widget.showFloatingActions) ...[
+                          const SizedBox(height: 10),
+                          actions,
+                        ],
+                      ],
+                    );
+                  }
+                  return Row(
+                    children: [
+                      Expanded(child: search),
+                      const SizedBox(width: 12),
+                      actions,
+                    ],
+                  );
+                },
               ),
               if (inventoryError)
                 const Padding(
@@ -599,6 +591,41 @@ class _ProductsScreenState extends State<ProductsScreen> {
       ),
       const SizedBox(height: 3),
       Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+    ],
+  );
+
+  Widget _buildInventoryActions() => Wrap(
+    spacing: 8,
+    runSpacing: 8,
+    children: [
+      FilledButton.icon(
+        onPressed: () => showInventoryPrintDialog(
+          context,
+          _latestProducts,
+          _latestInventory,
+        ),
+        icon: const Icon(Icons.print_outlined),
+        label: const Text('Print stock list'),
+      ),
+      FilledButton.icon(
+        onPressed: _openProductForm,
+        icon: const Icon(Icons.add),
+        label: const Text('Add product'),
+      ),
+      FilledButton.icon(
+        onPressed: _openStockInventory,
+        icon: const Icon(Icons.inventory_2_outlined),
+        label: const Text('Stock Inventory'),
+      ),
+      FilledButton.icon(
+        onPressed: _openDamageReport,
+        style: FilledButton.styleFrom(
+          backgroundColor: Colors.red,
+          foregroundColor: Colors.white,
+        ),
+        icon: const Icon(Icons.warning_amber_outlined),
+        label: const Text('Report damage'),
+      ),
     ],
   );
 
@@ -650,8 +677,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
     Map<String, Map<String, dynamic>> inventory,
   ) {
     final lowProducts = products.where((product) {
+      final isActive =
+          product.data()?['status']?.toString().toLowerCase() != 'inactive';
       final status = _stockStatus(product, inventory[product.id] ?? {});
-      return status == 'Low stock' || status == 'Out of stock';
+      return isActive && (status == 'Low stock' || status == 'Out of stock');
     }).toList();
     if (lowProducts.isEmpty) {
       return _chartCard(const Text('No products need restocking.'));
@@ -733,6 +762,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
     Map<String, dynamic> inventory,
   ) {
     final data = product.data() ?? {};
+    final isActive = data['status']?.toString().toLowerCase() != 'inactive';
     final stock = _stockFor(product, inventory);
     final stockStatus = _stockStatus(product, inventory);
     final statusColor = stockStatus == 'In stock'
@@ -745,25 +775,39 @@ class _ProductsScreenState extends State<ProductsScreen> {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
-        side: BorderSide(color: Colors.indigo.withValues(alpha: 0.10)),
+        side: BorderSide(
+          color: isActive
+              ? Colors.indigo.withValues(alpha: 0.10)
+              : Colors.grey.shade300,
+        ),
       ),
+      color: isActive ? null : Colors.grey.shade100,
       child: ListTile(
         contentPadding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
         onTap: () => _showProduct(product),
         leading: CircleAvatar(
-          backgroundColor: Colors.indigo[50],
-          child: const Icon(Icons.grid_view, color: Colors.indigo),
+          backgroundColor: isActive ? Colors.indigo[50] : Colors.grey.shade200,
+          child: Icon(
+            Icons.grid_view,
+            color: isActive ? Colors.indigo : Colors.grey,
+          ),
         ),
         title: Text(
           data['productName']?.toString() ?? 'Unnamed product',
-          style: const TextStyle(fontWeight: FontWeight.w600),
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: isActive ? null : Colors.grey.shade600,
+          ),
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 5),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('${data['brand'] ?? '-'}  •  ${data['size'] ?? '-'}'),
+              Text(
+                '${data['brand'] ?? '-'}  •  ${data['size'] ?? '-'}',
+                style: TextStyle(color: isActive ? null : Colors.grey),
+              ),
               const SizedBox(height: 5),
               Wrap(
                 spacing: 10,
@@ -771,14 +815,15 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 children: [
                   Text(
                     'Stock: ${_formatNumber(stock)}',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: isActive ? null : Colors.grey,
+                    ),
                   ),
                   Text(
                     '● ${data['status'] ?? 'Active'}',
                     style: TextStyle(
-                      color: data['status'] == 'Inactive'
-                          ? Colors.grey
-                          : Colors.indigo,
+                      color: isActive ? Colors.indigo : Colors.grey,
                     ),
                   ),
                   Text(
@@ -1213,110 +1258,6 @@ class _StockInventoryDialogState extends State<_StockInventoryDialog> {
   }
 }
 
-class _StockBarChart extends StatelessWidget {
-  const _StockBarChart({
-    required this.products,
-    required this.stocks,
-    required this.reorderPoints,
-    required this.formatNumber,
-  });
-
-  final List<DocumentSnapshot<Map<String, dynamic>>> products;
-  final List<double> stocks;
-  final List<double> reorderPoints;
-  final String Function(double) formatNumber;
-
-  Color _barColor(double stock, double reorderPoint) {
-    if (stock <= 0) return Colors.red;
-    if (stock <= reorderPoint) return Colors.orange;
-    if (stock <= reorderPoint * 2) return Colors.green;
-    return Colors.indigo;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final maxStock = stocks.fold<double>(
-      0,
-      (max, value) => value > max ? value : max,
-    );
-    return Column(
-      children: [
-        Wrap(
-          spacing: 12,
-          runSpacing: 6,
-          children: [
-            _legend(Colors.indigo, 'Plenty'),
-            _legend(Colors.green, 'Ready soon'),
-            _legend(Colors.orange, 'Low stock'),
-            _legend(Colors.red, 'Out of stock'),
-          ],
-        ),
-        const SizedBox(height: 8),
-        for (var index = 0; index < products.length; index++)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 92,
-                  child: Text(
-                    products[index].data()?['productName']?.toString() ??
-                        'Unnamed',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: stocks[index] <= 0 ? Colors.red : null,
-                      fontWeight: stocks[index] <= 0
-                          ? FontWeight.w700
-                          : FontWeight.normal,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      minHeight: 12,
-                      value: maxStock == 0 ? 0 : stocks[index] / maxStock,
-                      backgroundColor: Colors.indigo.withValues(alpha: 0.08),
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        _barColor(stocks[index], reorderPoints[index]),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 38,
-                  child: Text(
-                    formatNumber(stocks[index]),
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(fontSize: 11),
-                  ),
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _legend(Color color, String label) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Container(
-        width: 8,
-        height: 8,
-        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-      ),
-      const SizedBox(width: 5),
-      Text(label, style: const TextStyle(fontSize: 11)),
-    ],
-  );
-}
-
 class _StockDonutChart extends StatelessWidget {
   const _StockDonutChart({
     required this.inStock,
@@ -1452,15 +1393,17 @@ class _SalesAnalyticsPanel extends StatelessWidget {
           0,
           (total, record) => total + _amount(record.data()['totalAmount']),
         );
-        final balanceDue = records.fold<double>(
-          0,
-          (total, record) => total + _amount(record.data()['balanceDue']),
-        );
         final paid = monthRecords.fold<double>(
           0,
           (total, record) => total + _amount(record.data()['amountPaid']),
         );
         final bars = _dailyIncome(monthRecords, now);
+        final yearRecords = records.where((record) {
+          final value = record.data()['saleDate'];
+          final date = value is Timestamp ? value.toDate() : null;
+          return date != null && date.year == now.year;
+        }).toList();
+        final yearlyBars = _monthlyIncome(yearRecords, now);
 
         return Column(
           children: [
@@ -1484,14 +1427,6 @@ class _SalesAnalyticsPanel extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Expanded(
-                  child: _AnalyticsMetric(
-                    'Customer balances',
-                    'PHP ${_formatAmount(balanceDue)}',
-                    Icons.account_balance_wallet_outlined,
-                    Colors.orange,
-                  ),
-                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -1503,7 +1438,60 @@ class _SalesAnalyticsPanel extends StatelessWidget {
                         child: Text('No sales recorded this month'),
                       ),
                     )
-                  : _SalesBarChart(values: bars),
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Daily sales this month',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Sales total by day for the current month',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          height: 190,
+                          child: _SalesLineChart(values: bars),
+                        ),
+                      ],
+                    ),
+            ),
+            const SizedBox(height: 12),
+            _analyticsCard(
+              yearRecords.isEmpty
+                  ? const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(20),
+                        child: Text('No sales recorded this year'),
+                      ),
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Monthly sales this year',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Sales total by month for the current year',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          height: 190,
+                          child: _SalesLineChart(values: yearlyBars),
+                        ),
+                      ],
+                    ),
             ),
           ],
         );
@@ -1525,6 +1513,20 @@ class _SalesAnalyticsPanel extends StatelessWidget {
       }
     }
     return days;
+  }
+
+  List<double> _monthlyIncome(
+    List<DocumentSnapshot<Map<String, dynamic>>> records,
+    DateTime now,
+  ) {
+    final months = List<double>.filled(12, 0);
+    for (final record in records) {
+      final data = record.data() ?? <String, dynamic>{};
+      final value = data['saleDate'];
+      final date = value is Timestamp ? value.toDate() : null;
+      if (date != null) months[date.month - 1] += _amount(data['totalAmount']);
+    }
+    return months;
   }
 
   double _amount(dynamic value) =>
@@ -1577,58 +1579,210 @@ class _AnalyticsMetric extends StatelessWidget {
   );
 }
 
-class _SalesBarChart extends StatelessWidget {
-  const _SalesBarChart({required this.values});
+class _SalesLineChart extends StatelessWidget {
+  const _SalesLineChart({required this.values});
 
   final List<double> values;
 
   @override
-  Widget build(BuildContext context) {
-    final maxValue = values.fold<double>(
-      0,
-      (max, value) => value > max ? value : max,
-    );
-    return SizedBox(
-      height: 190,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          for (var index = 0; index < values.length; index++)
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 1),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.bottomCenter,
-                        child: FractionallySizedBox(
-                          heightFactor: maxValue == 0
-                              ? 0
-                              : values[index] / maxValue,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: Colors.indigo.withValues(alpha: 0.78),
-                              borderRadius: const BorderRadius.vertical(
-                                top: Radius.circular(4),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text('${index + 1}', style: const TextStyle(fontSize: 9)),
-                  ],
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => CustomPaint(
+    painter: _SalesLineChartPainter(values: values),
+    child: const SizedBox.expand(),
+  );
 }
+
+class _SalesLineChartPainter extends CustomPainter {
+  const _SalesLineChartPainter({required this.values});
+
+  final List<double> values;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const leftInset = 58.0;
+    const topInset = 8.0;
+    const bottomInset = 24.0;
+    final chartWidth = size.width - leftInset;
+    final chartHeight = size.height - topInset - bottomInset;
+    final maximum = values.fold<double>(
+      0,
+      (current, value) => value > current ? value : current,
+    );
+    final grid = Paint()
+      ..color = Colors.grey.shade300
+      ..strokeWidth = 1;
+    for (var tick = 0; tick <= 4; tick++) {
+      final fraction = tick / 4;
+      final y = topInset + chartHeight * (1 - fraction);
+      canvas.drawLine(Offset(leftInset, y), Offset(size.width, y), grid);
+      _drawText(
+        canvas,
+        'PHP ${_compactAmount(maximum * fraction)}',
+        Offset(0, y - 6),
+        leftInset - 6,
+        TextAlign.right,
+      );
+    }
+    if (maximum == 0 || values.isEmpty) return;
+    final points = [
+      for (var index = 0; index < values.length; index++)
+        Offset(
+          values.length == 1
+              ? leftInset + chartWidth / 2
+              : leftInset + chartWidth * index / (values.length - 1),
+          topInset + chartHeight - values[index] / maximum * chartHeight,
+        ),
+    ];
+    final line = Paint()
+      ..color = Colors.indigo
+      ..strokeWidth = 2.5
+      ..style = PaintingStyle.stroke;
+    final path = Path()..moveTo(points.first.dx, points.first.dy);
+    for (final point in points.skip(1)) {
+      path.lineTo(point.dx, point.dy);
+    }
+    canvas.drawPath(path, line);
+    for (final point in points) {
+      canvas.drawCircle(point, 3.5, Paint()..color = Colors.indigo);
+    }
+    for (var index = 0; index < values.length; index++) {
+      _drawText(
+        canvas,
+        '${index + 1}',
+        Offset(points[index].dx - 20, topInset + chartHeight + 7),
+        40,
+        TextAlign.center,
+      );
+    }
+  }
+
+  void _drawText(
+    Canvas canvas,
+    String text,
+    Offset offset,
+    double width,
+    TextAlign align,
+  ) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(color: Colors.grey.shade600, fontSize: 9),
+      ),
+      textDirection: TextDirection.ltr,
+      textAlign: align,
+      maxLines: 1,
+    )..layout(maxWidth: width);
+    painter.paint(canvas, offset);
+  }
+
+  String _compactAmount(double value) => value == value.roundToDouble()
+      ? value.toInt().toString()
+      : value.toStringAsFixed(1);
+
+  @override
+  bool shouldRepaint(covariant _SalesLineChartPainter oldDelegate) =>
+      oldDelegate.values != values;
+}
+
+/*
+    super.initState();
+    final data = widget.product?.data() ?? {};
+    _controllers = {
+
+                                class _SalesLineChartPainter extends CustomPainter {
+                                  const _SalesLineChartPainter({required this.values});
+
+                                  final List<double> values;
+
+                                  @override
+                                  void paint(Canvas canvas, Size size) {
+                                    const leftInset = 58.0;
+                                    const topInset = 8.0;
+                                    const bottomInset = 24.0;
+                                    final chartWidth = size.width - leftInset;
+                                    final chartHeight = size.height - topInset - bottomInset;
+                                    final maximum = values.fold<double>(
+                                      0,
+                                      (current, value) => value > current ? value : current,
+                                    );
+                                    final grid = Paint()
+                                      ..color = Colors.grey.shade300
+                                      ..strokeWidth = 1;
+
+                                    for (var tick = 0; tick <= 4; tick++) {
+                                      final fraction = tick / 4;
+                                      final y = topInset + chartHeight * (1 - fraction);
+                                      canvas.drawLine(Offset(leftInset, y), Offset(size.width, y), grid);
+                                      _drawText(
+                                        canvas,
+                                        'PHP ${_compactAmount(maximum * fraction)}',
+                                        Offset(0, y - 6),
+                                        leftInset - 6,
+                                        TextAlign.right,
+                                      );
+                                    }
+                                    if (maximum == 0 || values.isEmpty) return;
+
+                                    final points = [
+                                      for (var index = 0; index < values.length; index++)
+                                        Offset(
+                                          values.length == 1
+                                              ? leftInset + chartWidth / 2
+                                              : leftInset + chartWidth * index / (values.length - 1),
+                                          topInset + chartHeight - values[index] / maximum * chartHeight,
+                                        ),
+                                    ];
+                                    final line = Paint()
+                                      ..color = Colors.indigo
+                                      ..strokeWidth = 2.5
+                                      ..style = PaintingStyle.stroke;
+                                    final path = Path()..moveTo(points.first.dx, points.first.dy);
+                                    for (final point in points.skip(1)) {
+                                      path.lineTo(point.dx, point.dy);
+                                    }
+                                    canvas.drawPath(path, line);
+                                    for (final point in points) {
+                                      canvas.drawCircle(point, 3.5, Paint()..color = Colors.indigo);
+                                    }
+                                    for (var index = 0; index < values.length; index++) {
+                                      final x = points[index].dx;
+                                      _drawText(
+                                        canvas,
+                                        '${index + 1}',
+                                        Offset(x - 20, topInset + chartHeight + 7),
+                                        40,
+                                        TextAlign.center,
+                                      );
+                                    }
+                                  }
+
+                                  void _drawText(
+                                    Canvas canvas,
+                                    String text,
+                                    Offset offset,
+                                    double width,
+                                    TextAlign align,
+                                  ) {
+                                    final painter = TextPainter(
+                                      text: TextSpan(
+                                        text: text,
+                                        style: TextStyle(color: Colors.grey.shade600, fontSize: 9),
+                                      ),
+                                      textDirection: TextDirection.ltr,
+                                      textAlign: align,
+                                      maxLines: 1,
+                                    )..layout(maxWidth: width);
+                                    painter.paint(canvas, offset);
+                                  }
+
+                                  String _compactAmount(double value) => value == value.roundToDouble()
+                                      ? value.toInt().toString()
+                                      : value.toStringAsFixed(1);
+
+                                  @override
+                                  bool shouldRepaint(covariant _SalesLineChartPainter oldDelegate) =>
+                                      oldDelegate.values != values;
+                                }
+*/
 
 class ProductFormScreen extends StatefulWidget {
   const ProductFormScreen({super.key, this.product});
@@ -1730,10 +1884,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       setState(() => _saving = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Could not save product: $error'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Could not save product: $error')),
         );
       }
     }
@@ -1757,15 +1908,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   padding: const EdgeInsets.only(bottom: 14),
                   child: TextFormField(
                     controller: _controllers[field.$1],
-                    keyboardType:
-                        field.$1 == 'productName' ||
-                            field.$1 == 'brand' ||
-                            field.$1 == 'design' ||
-                            field.$1 == 'color' ||
-                            field.$1 == 'size' ||
-                            field.$1 == 'finish'
-                        ? TextInputType.text
-                        : const TextInputType.numberWithOptions(decimal: true),
                     decoration: InputDecoration(
                       labelText: field.$2,
                       border: const OutlineInputBorder(),
@@ -1787,13 +1929,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         ),
         FilledButton.icon(
           onPressed: _saving ? null : _save,
-          icon: _saving
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.save_outlined),
+          icon: const Icon(Icons.save_outlined),
           label: Text(_saving ? 'Saving...' : 'Save product'),
         ),
       ],

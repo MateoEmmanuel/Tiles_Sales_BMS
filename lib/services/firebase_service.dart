@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
+import 'dart:developer' as developer;
 import '../firebase_options.dart';
 
 /// Firebase Service - Handles connection to Firebase/Firestore
@@ -98,12 +99,12 @@ class FirebaseService {
   }
 
   void _addError(String error) {
-    print('❌ ERROR: $error');
+    developer.log(error, name: 'FirebaseService', level: 1000);
     _errorController.add(error);
   }
 
   void _addInfo(String info) {
-    print('ℹ️  INFO: $info');
+    developer.log(info, name: 'FirebaseService');
   }
 
   /// Cleanup

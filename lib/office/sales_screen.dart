@@ -12,74 +12,12 @@ class SalesScreen extends StatefulWidget {
 
 class _SalesScreenState extends State<SalesScreen> {
   final _firebaseService = FirebaseService();
-  int _section = 0;
-
   @override
   Widget build(BuildContext context) {
     if (!_firebaseService.isInitialized) {
       return const Center(child: Text('Firebase is not initialized'));
     }
-    return Column(
-      children: [
-        _SalesSubNavigation(
-          selected: _section,
-          onSelected: (value) => setState(() => _section = value),
-        ),
-        Expanded(
-          child: _section == 0
-              ? const _TransactionHistoryView()
-              : const _CustomerBalanceHistoryView(),
-        ),
-      ],
-    );
-  }
-}
-
-class _SalesSubNavigation extends StatelessWidget {
-  const _SalesSubNavigation({required this.selected, required this.onSelected});
-
-  final int selected;
-  final ValueChanged<int> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 18, 24, 8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
-      ),
-      child: Wrap(
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: 24,
-        runSpacing: 10,
-        children: [
-          Text(
-            'Sales workspace',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          SegmentedButton<int>(
-            segments: const [
-              ButtonSegment(
-                value: 0,
-                icon: Icon(Icons.receipt_long_outlined),
-                label: Text('Transaction history'),
-              ),
-              ButtonSegment(
-                value: 1,
-                icon: Icon(Icons.account_balance_wallet_outlined),
-                label: Text('Customer balance history'),
-              ),
-            ],
-            selected: {selected},
-            onSelectionChanged: (values) => onSelected(values.first),
-          ),
-        ],
-      ),
-    );
+    return const _TransactionHistoryView();
   }
 }
 
@@ -185,39 +123,52 @@ class _TransactionHistoryViewState extends State<_TransactionHistoryView> {
 
   Widget _transactionRow(DocumentSnapshot<Map<String, dynamic>> sale) {
     final data = sale.data() ?? {};
-    final due = _number(data['balanceDue']);
     final date = _dateValue(data['saleDate']);
-    return Card(
-      elevation: 0,
-      margin: EdgeInsets.zero,
-      child: ListTile(
-        onTap: () => _showTransaction(sale),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
-        leading: const CircleAvatar(child: Icon(Icons.receipt_long_outlined)),
-        title: Text(
-          data['customerName']?.toString() ?? 'Walk-in customer',
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-        subtitle: Text(
-          '${data['salesId'] ?? 'Receipt ID not recorded'}  •  ${date == null ? 'Date not recorded' : _dateLabel(date)}',
-        ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              'PHP ${_money(_number(data['totalAmount']))}',
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: sale.reference.collection('items').snapshots(),
+      builder: (context, snapshot) {
+        final quantity = snapshot.data?.docs.fold<double>(
+          0,
+          (total, item) => total + _number(item.data()['quantity']),
+        );
+        return Card(
+          elevation: 0,
+          margin: EdgeInsets.zero,
+          child: ListTile(
+            onTap: () => _showTransaction(sale),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 18,
+              vertical: 7,
+            ),
+            leading: const CircleAvatar(
+              child: Icon(Icons.receipt_long_outlined),
+            ),
+            title: Text(
+              data['customerName']?.toString() ?? 'Walk-in customer',
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
-            Text(
-              due > 0 ? 'Due PHP ${_money(due)}' : 'Paid',
-              style: TextStyle(
-                color: due > 0 ? Colors.orange.shade800 : Colors.green,
-              ),
+            subtitle: Text(
+              '${data['salesId'] ?? 'Receipt ID not recorded'}  •  ${date == null ? 'Date not recorded' : _dateLabel(date)}',
             ),
-          ],
-        ),
-      ),
+            trailing: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  'PHP ${_money(_number(data['totalAmount']))}',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                Text(
+                  quantity == null
+                      ? 'Qty loading...'
+                      : 'Qty sold ${_money(quantity)}',
+                  style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -530,15 +481,6 @@ class _TransactionDetailsDialog extends StatelessWidget {
               'Total amount',
               'PHP ${_money(_number(data['totalAmount']))}',
             ),
-            if (_hasBalance(data)) ...[
-              _detail('Balance status', _balanceStatus(data)),
-              if (_balanceStatus(data) == 'Paid' &&
-                  data['balancePaidAt'] != null)
-                _detail(
-                  'Balance paid date',
-                  _dateLabel(_dateValue(data['balancePaidAt'])),
-                ),
-            ],
           ],
         ),
       ),
@@ -648,17 +590,6 @@ Widget _error(String message) =>
     Center(child: Text(message, textAlign: TextAlign.center));
 double _number(dynamic value) =>
     value is num ? value.toDouble() : double.tryParse('$value') ?? 0;
-bool _hasBalance(Map<String, dynamic> data) =>
-    _number(data['balanceDue']) > 0 ||
-    data['balanceStatus'] != null ||
-    data['balancePaidAt'] != null;
-
-String _balanceStatus(Map<String, dynamic> data) {
-  final status = data['balanceStatus']?.toString().toLowerCase();
-  if (status == 'paid') return 'Paid';
-  return 'Not paid';
-}
-
 DateTime? _dateValue(dynamic value) {
   if (value is Timestamp) return value.toDate();
   if (value is DateTime) return value;

@@ -8,6 +8,36 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 import '../services/firebase_service.dart';
+import 'office_print_dialogs.dart';
+
+Future<Uint8List> _preparePdf(
+  BuildContext context,
+  Future<Uint8List> Function() build,
+) async {
+  showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => const AlertDialog(
+      content: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          SizedBox(width: 16),
+          Text('Preparing report...'),
+        ],
+      ),
+    ),
+  );
+  try {
+    return await build();
+  } finally {
+    if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
+  }
+}
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -215,10 +245,6 @@ class _ReportData {
     0,
     (total, sale) => total + _number(sale.data()?['amountPaid']),
   );
-  double get balances => sales.fold(
-    0,
-    (total, sale) => total + _number(sale.data()?['balanceDue']),
-  );
   double get stock => inventory.fold(
     0,
     (total, item) =>
@@ -263,16 +289,33 @@ class _SummaryReport extends StatelessWidget {
               color: Colors.indigo,
             ),
             _ReportMetric(
-              label: 'Customer balances',
-              value: 'PHP ${_money(data.balances)}',
-              icon: Icons.account_balance_wallet_outlined,
-              color: Colors.orange,
-            ),
-            _ReportMetric(
               label: 'Stock quantity',
               value: _money(data.stock),
               icon: Icons.inventory_2_outlined,
               color: Colors.teal,
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            OutlinedButton.icon(
+              onPressed: () => _showSalesPrintDialog(context, data.sales),
+              icon: const Icon(Icons.print_outlined),
+              label: const Text('Print sales report'),
+            ),
+            OutlinedButton.icon(
+              onPressed: () => _showTrendPrintDialog(context, data.sales),
+              icon: const Icon(Icons.show_chart_outlined),
+              label: const Text('Print sales trends'),
+            ),
+            OutlinedButton.icon(
+              onPressed: () =>
+                  showDamagePrintDialog(context, data.movements, data.products),
+              icon: const Icon(Icons.warning_amber_outlined),
+              label: const Text('Print damage history'),
             ),
           ],
         ),
@@ -320,7 +363,7 @@ class _SummaryReport extends StatelessWidget {
         const SizedBox(height: 10),
         _ReportModule(
           title: 'Sales reports',
-          description: 'Income, payments, balances, and transaction trends.',
+          description: 'Income, payments, and transaction trends.',
           icon: Icons.point_of_sale_outlined,
           onTap: () => onOpenSection(1),
         ),
@@ -380,8 +423,7 @@ class _SalesReportState extends State<_SalesReport> {
       children: [
         const _ReportIntro(
           title: 'Sales report',
-          subtitle:
-              'Income, collection, customer balances, and transaction history.',
+          subtitle: 'Income, collection, and transaction history.',
         ),
         const SizedBox(height: 14),
         Row(
@@ -409,13 +451,6 @@ class _SalesReportState extends State<_SalesReport> {
               icon: const Icon(Icons.show_chart_outlined),
               label: const Text('Trends'),
             ),
-            const SizedBox(width: 10),
-            FilledButton.icon(
-              onPressed: () =>
-                  _showSalesPrintDialog(context, widget.data.sales),
-              icon: const Icon(Icons.print_outlined),
-              label: const Text('Print report'),
-            ),
           ],
         ),
         const SizedBox(height: 18),
@@ -427,7 +462,7 @@ class _SalesReportState extends State<_SalesReport> {
         ),
         const SizedBox(height: 20),
         _ReportTableHeader(
-          labels: const ['Customer', 'Receipt', 'Date', 'Total', 'Balance'],
+          labels: const ['Customer', 'Receipt', 'Date', 'Total'],
         ),
         for (final sale in filtered) _SalesReportRow(sale: sale),
         if (filtered.isEmpty)
@@ -436,16 +471,6 @@ class _SalesReportState extends State<_SalesReport> {
             child: Center(child: Text('No sales records')),
           ),
       ],
-    );
-  }
-
-  void _showSalesPrintDialog(
-    BuildContext context,
-    List<DocumentSnapshot<Map<String, dynamic>>> sales,
-  ) {
-    showDialog<void>(
-      context: context,
-      builder: (_) => _SalesPrintDialog(sales: sales),
     );
   }
 
@@ -465,23 +490,9 @@ class _SalesTrends extends StatelessWidget {
   final ValueChanged<String> onPeriodChanged;
   final VoidCallback onBack;
 
-  Map<DateTime, double> _totals() {
-    final totals = <DateTime, double>{};
-    for (final sale in data.sales) {
-      final date = _date(sale.data()?['saleDate']);
-      if (date == null) continue;
-      final bucket = period == 'year'
-          ? DateTime(date.year)
-          : DateTime(date.year, date.month);
-      totals[bucket] =
-          (totals[bucket] ?? 0) + _number(sale.data()?['totalAmount']);
-    }
-    return totals;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final totals = _totals();
+    final totals = _salesTrendTotals(data.sales, period);
     final ascending = totals.entries.toList()
       ..sort((a, b) => a.key.compareTo(b.key));
     final ranked = totals.entries.toList()
@@ -519,12 +530,6 @@ class _SalesTrends extends StatelessWidget {
                   if (value != null) onPeriodChanged(value);
                 },
               ),
-            ),
-            const SizedBox(width: 10),
-            FilledButton.icon(
-              onPressed: () => _showTrendPrintDialog(context, ascending),
-              icon: const Icon(Icons.print_outlined),
-              label: const Text('Print trends'),
             ),
           ],
         ),
@@ -565,22 +570,49 @@ class _SalesTrends extends StatelessWidget {
       ],
     );
   }
+}
 
-  void _showTrendPrintDialog(
-    BuildContext context,
-    List<MapEntry<DateTime, double>> trends,
-  ) {
-    showDialog<void>(
-      context: context,
-      builder: (_) => _TrendPrintDialog(trends: trends, period: period),
-    );
+Map<DateTime, double> _salesTrendTotals(
+  List<DocumentSnapshot<Map<String, dynamic>>> sales,
+  String period,
+) {
+  final totals = <DateTime, double>{};
+  for (final sale in sales) {
+    final date = _date(sale.data()?['saleDate']);
+    if (date == null) continue;
+    final bucket = period == 'year'
+        ? DateTime(date.year)
+        : DateTime(date.year, date.month);
+    totals[bucket] =
+        (totals[bucket] ?? 0) + _number(sale.data()?['totalAmount']);
   }
+  return totals;
+}
+
+void _showSalesPrintDialog(
+  BuildContext context,
+  List<DocumentSnapshot<Map<String, dynamic>>> sales,
+) {
+  showDialog<void>(
+    context: context,
+    builder: (_) => _SalesPrintDialog(sales: sales),
+  );
+}
+
+void _showTrendPrintDialog(
+  BuildContext context,
+  List<DocumentSnapshot<Map<String, dynamic>>> sales,
+) {
+  showDialog<void>(
+    context: context,
+    builder: (_) => _TrendPrintDialog(sales: sales, period: 'month'),
+  );
 }
 
 class _TrendPrintDialog extends StatefulWidget {
-  const _TrendPrintDialog({required this.trends, required this.period});
+  const _TrendPrintDialog({required this.sales, required this.period});
 
-  final List<MapEntry<DateTime, double>> trends;
+  final List<DocumentSnapshot<Map<String, dynamic>>> sales;
   final String period;
 
   @override
@@ -713,12 +745,12 @@ class _TrendPrintDialogState extends State<_TrendPrintDialog> {
           child: const Text('Cancel'),
         ),
         OutlinedButton.icon(
-          onPressed: widget.trends.isEmpty ? null : _download,
+          onPressed: widget.sales.isEmpty ? null : _download,
           icon: const Icon(Icons.download_outlined),
           label: const Text('Download'),
         ),
         FilledButton.icon(
-          onPressed: widget.trends.isEmpty ? null : _print,
+          onPressed: widget.sales.isEmpty ? null : _print,
           icon: const Icon(Icons.print_outlined),
           label: const Text('Print'),
         ),
@@ -728,12 +760,8 @@ class _TrendPrintDialogState extends State<_TrendPrintDialog> {
 
   Future<Uint8List> _buildPdf() async {
     final document = pw.Document();
-    final ranked = widget.trends.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    final maximum = widget.trends.fold<double>(
-      0,
-      (current, entry) => entry.value > current ? entry.value : current,
-    );
+    final series = await _productTrendSeries();
+    final ranked = series.toList()..sort((a, b) => b.value.compareTo(a.value));
     document.addPage(
       pw.MultiPage(
         pageFormat: _pageFormat,
@@ -752,25 +780,14 @@ class _TrendPrintDialogState extends State<_TrendPrintDialog> {
               'Trend chart',
               style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
             ),
-            for (final entry in widget.trends)
-              pw.Padding(
-                padding: const pw.EdgeInsets.symmetric(vertical: 2),
-                child: pw.Row(
-                  children: [
-                    pw.SizedBox(
-                      width: 55,
-                      child: pw.Text(_trendLabel(entry.key)),
-                    ),
-                    pw.Container(
-                      height: 9,
-                      width: maximum == 0 ? 0 : 260 * entry.value / maximum,
-                      color: PdfColors.indigo,
-                    ),
-                    pw.SizedBox(width: 6),
-                    pw.Text('PHP ${_money(entry.value)}'),
-                  ],
-                ),
-              ),
+            if (series.isEmpty)
+              pw.Text('No product trend data available')
+            else ...[
+              _pdfProductTrendChart(series),
+              pw.SizedBox(height: 8),
+              for (var index = 0; index < series.length; index++)
+                _pdfProductTrendRow(series[index], index),
+            ],
           ],
           if (_includeRanking) ...[
             pw.SizedBox(height: 18),
@@ -779,11 +796,11 @@ class _TrendPrintDialogState extends State<_TrendPrintDialog> {
               style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
             ),
             pw.TableHelper.fromTextArray(
-              headers: const ['Period', 'Total sales'],
+              headers: const ['Product', 'Total sales'],
               cellStyle: const pw.TextStyle(fontSize: 16),
               data: [
                 for (final entry in ranked)
-                  [_trendLabel(entry.key), 'PHP ${_money(entry.value)}'],
+                  [entry.name, 'PHP ${_money(entry.value)}'],
               ],
             ),
           ],
@@ -793,13 +810,128 @@ class _TrendPrintDialogState extends State<_TrendPrintDialog> {
     return Uint8List.fromList(await document.save());
   }
 
+  Future<List<_ProductTrendSeries>> _productTrendSeries() async {
+    final byProduct = <String, _ProductTrendSeries>{};
+    for (final sale in widget.sales) {
+      final saleDate = _date(sale.data()?['saleDate']);
+      if (saleDate == null) continue;
+      final bucket = widget.period == 'year'
+          ? DateTime(saleDate.year)
+          : DateTime(saleDate.year, saleDate.month);
+      final items = await sale.reference.collection('items').get();
+      for (final item in items.docs) {
+        final data = item.data();
+        final productId = _referenceId(data['productId'] ?? item.id);
+        final productName = data['productName']?.toString() ?? productId;
+        final product = byProduct.putIfAbsent(
+          productId,
+          () => _ProductTrendSeries(name: productName),
+        );
+        product.points[bucket] =
+            (product.points[bucket] ?? 0) +
+            _number(data['lineTotal'] ?? data['quantity']);
+      }
+    }
+    return byProduct.values.where((series) => series.value > 0).toList();
+  }
+
+  pw.Widget _pdfProductTrendChart(List<_ProductTrendSeries> series) {
+    final buckets = <DateTime>{
+      for (final product in series) ...product.points.keys,
+    }.toList()..sort();
+    final maximum = series
+        .expand((product) => product.points.values)
+        .fold<double>(0, (current, value) => value > current ? value : current);
+    if (buckets.isEmpty || maximum == 0) {
+      return pw.Text('No product trend data available');
+    }
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+      children: [
+        pw.SizedBox(
+          height: 220,
+          child: pw.CustomPaint(
+            painter: (canvas, size) {
+              canvas.setLineWidth(1);
+              canvas.setStrokeColor(PdfColors.grey400);
+              for (var tick = 0; tick <= 4; tick++) {
+                final y = size.y * tick / 4;
+                canvas.drawLine(0, y, size.x, y);
+              }
+              for (var index = 0; index < series.length; index++) {
+                final product = series[index];
+                final color = _pdfTrendColors[index % _pdfTrendColors.length];
+                canvas.setStrokeColor(color);
+                canvas.setLineWidth(2.2);
+                final points = <PdfPoint>[];
+                for (
+                  var bucketIndex = 0;
+                  bucketIndex < buckets.length;
+                  bucketIndex++
+                ) {
+                  final value = product.points[buckets[bucketIndex]] ?? 0;
+                  points.add(
+                    PdfPoint(
+                      buckets.length == 1
+                          ? size.x / 2
+                          : size.x * bucketIndex / (buckets.length - 1),
+                      size.y - size.y * value / maximum,
+                    ),
+                  );
+                }
+                if (points.isEmpty) continue;
+                canvas.moveTo(points.first.x, points.first.y);
+                for (final point in points.skip(1)) {
+                  canvas.lineTo(point.x, point.y);
+                }
+                canvas.strokePath();
+                for (final point in points) {
+                  canvas.setColor(color);
+                  canvas.drawEllipse(point.x, point.y, 2.8, 2.8);
+                  canvas.fillPath();
+                }
+              }
+            },
+          ),
+        ),
+        pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          children: [
+            pw.Text(_trendLabel(buckets.first)),
+            pw.Text(_trendLabel(buckets.last)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  pw.Widget _pdfProductTrendRow(_ProductTrendSeries series, int index) {
+    return pw.Container(
+      margin: const pw.EdgeInsets.only(top: 4),
+      padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+      color: PdfColors.yellow100,
+      child: pw.Row(
+        children: [
+          pw.Container(
+            width: 10,
+            height: 10,
+            color: _pdfTrendColors[index % _pdfTrendColors.length],
+          ),
+          pw.SizedBox(width: 7),
+          pw.Expanded(child: pw.Text(series.name)),
+          pw.Text('PHP ${_money(series.value)}'),
+        ],
+      ),
+    );
+  }
+
   Future<void> _print() async {
-    final bytes = await _buildPdf();
+    final bytes = await _preparePdf(context, _buildPdf);
     await Printing.layoutPdf(onLayout: (_) async => bytes);
   }
 
   Future<void> _download() async {
-    final bytes = await _buildPdf();
+    final bytes = await _preparePdf(context, _buildPdf);
     await Printing.sharePdf(bytes: bytes, filename: 'sales-trends.pdf');
   }
 }
@@ -842,6 +974,26 @@ class _TrendLineChart extends StatelessWidget {
 String _trendLabel(DateTime date) => date.day == 1 && date.month == 1
     ? '${date.year}'
     : '${date.year}-${date.month.toString().padLeft(2, '0')}';
+
+const _pdfTrendColors = [
+  PdfColors.indigo,
+  PdfColors.teal,
+  PdfColors.orange,
+  PdfColors.red,
+  PdfColors.green,
+  PdfColors.purple,
+  PdfColors.cyan,
+  PdfColors.brown,
+];
+
+class _ProductTrendSeries {
+  _ProductTrendSeries({required this.name});
+
+  final String name;
+  final points = <DateTime, double>{};
+
+  double get value => points.values.fold(0, (total, amount) => total + amount);
+}
 
 class _SalesPrintDialog extends StatefulWidget {
   const _SalesPrintDialog({required this.sales});
@@ -1266,14 +1418,14 @@ class _SalesPrintDialogState extends State<_SalesPrintDialog> {
   Future<void> _print(
     List<DocumentSnapshot<Map<String, dynamic>>> sales,
   ) async {
-    final bytes = await _buildPdf(sales);
+    final bytes = await _preparePdf(context, () => _buildPdf(sales));
     await Printing.layoutPdf(onLayout: (_) async => bytes);
   }
 
   Future<void> _download(
     List<DocumentSnapshot<Map<String, dynamic>>> sales,
   ) async {
-    final bytes = await _buildPdf(sales);
+    final bytes = await _preparePdf(context, () => _buildPdf(sales));
     await Printing.sharePdf(bytes: bytes, filename: 'sales-report.pdf');
   }
 
@@ -1439,9 +1591,16 @@ class _InventoryReport extends StatefulWidget {
 class _InventoryReportState extends State<_InventoryReport> {
   String _comparisonPeriod = 'month';
   String? _selectedProductId;
+  bool _showProductTrends = false;
 
   @override
   Widget build(BuildContext context) {
+    if (_showProductTrends) {
+      return _ProductSoldTrendsPage(
+        data: widget.data,
+        onBack: () => setState(() => _showProductTrends = false),
+      );
+    }
     final rows = widget.data.products
         .where(
           (product) => (product.data()?['productName'] ?? '')
@@ -1499,6 +1658,12 @@ class _InventoryReportState extends State<_InventoryReport> {
                 },
               ),
             ),
+            const Spacer(),
+            OutlinedButton.icon(
+              onPressed: () => setState(() => _showProductTrends = true),
+              icon: const Icon(Icons.show_chart_outlined),
+              label: const Text('Product sales trends'),
+            ),
           ],
         ),
         const SizedBox(height: 18),
@@ -1529,6 +1694,47 @@ class _InventoryReportState extends State<_InventoryReport> {
       ],
     );
   }
+}
+
+class _ProductSoldTrendsPage extends StatelessWidget {
+  const _ProductSoldTrendsPage({required this.data, required this.onBack});
+
+  final _ReportData data;
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) => ListView(
+    padding: const EdgeInsets.fromLTRB(24, 22, 24, 30),
+    children: [
+      Row(
+        children: [
+          IconButton(
+            onPressed: onBack,
+            tooltip: 'Back to inventory and movement',
+            icon: const Icon(Icons.arrow_back),
+          ),
+          const Expanded(
+            child: _ReportIntro(
+              title: 'Product sales trends',
+              subtitle: 'Compare units sold by product over time.',
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 18),
+      const Text(
+        'Top 5 trend products sold',
+        style: TextStyle(fontWeight: FontWeight.w700),
+      ),
+      const SizedBox(height: 4),
+      Text(
+        'Showing the five products with the highest sold quantity.',
+        style: TextStyle(color: Colors.grey, fontSize: 12),
+      ),
+      const SizedBox(height: 10),
+      _SummaryInventoryInsights(data: data),
+    ],
+  );
 }
 
 class _MovementReport extends StatefulWidget {
@@ -1904,6 +2110,11 @@ class _SummaryInventoryInsightsState extends State<_SummaryInventoryInsights> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Top 5 trend products sold',
+            style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
           ),
           const SizedBox(height: 14),
           if (entries.isEmpty)
@@ -2450,6 +2661,7 @@ class _ProductStockComparisonChart extends StatelessWidget {
             child: CustomPaint(
               painter: _ProductMovementPainter(
                 movements: _movementsForProduct(product.id),
+                period: comparisonPeriod,
               ),
               child: const SizedBox.expand(),
             ),
@@ -2485,36 +2697,50 @@ class _ProductStockComparisonChart extends StatelessWidget {
 }
 
 class _ProductMovementPainter extends CustomPainter {
-  const _ProductMovementPainter({required this.movements});
+  const _ProductMovementPainter({
+    required this.movements,
+    required this.period,
+  });
 
   final List<DocumentSnapshot<Map<String, dynamic>>> movements;
+  final String period;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final stock = <double>[];
-    final sold = <double>[];
-    final labels = <String>[];
+    final grouped = <DateTime, (double stock, double sold)>{};
     for (final movement in movements) {
       final data = movement.data() ?? {};
-      stock.add(_number(data['newQuantity']));
-      sold.add(
-        data['movementType']?.toString() == 'sale'
-            ? _number(data['quantity'])
-            : 0,
-      );
       final date = _date(data['movementDate']);
-      labels.add(date == null ? '-' : _shortDate(date));
+      if (date == null) continue;
+      final bucket = period == 'year'
+          ? DateTime(date.year, date.month)
+          : DateTime(date.year, date.month, date.day);
+      final previous = grouped[bucket] ?? (0, 0);
+      grouped[bucket] = (
+        _number(data['newQuantity']),
+        previous.$2 +
+            (data['movementType']?.toString() == 'sale'
+                ? _number(data['quantity'])
+                : 0),
+      );
     }
+    final entries = grouped.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
     _InventoryStockSalesPainter(
-      stock: stock,
-      sold: sold,
-      labels: labels,
+      stock: [for (final entry in entries) entry.value.$1],
+      sold: [for (final entry in entries) entry.value.$2],
+      labels: [
+        for (final entry in entries)
+          period == 'year'
+              ? '${entry.key.month}/${entry.key.year}'
+              : _shortDate(entry.key),
+      ],
     ).paint(canvas, size);
   }
 
   @override
   bool shouldRepaint(covariant _ProductMovementPainter oldDelegate) =>
-      oldDelegate.movements != movements;
+      oldDelegate.movements != movements || oldDelegate.period != period;
 }
 
 class _InventoryStockSalesPainter extends CustomPainter {

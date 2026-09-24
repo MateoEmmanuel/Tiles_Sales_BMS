@@ -44,35 +44,58 @@ class _OfficeShellState extends State<OfficeShell> {
   }
 
   Widget _buildShell(_BusinessSettings settings) {
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        titleSpacing: 8,
-        leadingWidth: 280,
-        leading: _BusinessBrand(settings: settings),
-        title: _buildQuickNavigation(),
-        actions: [_buildUserMenu(), const SizedBox(width: 8)],
+    final baseTheme = Theme.of(context);
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: const Color(0xFF176B6B),
+      brightness: Brightness.light,
+    );
+
+    return Theme(
+      data: baseTheme.copyWith(
+        colorScheme: colorScheme,
+        scaffoldBackgroundColor: const Color(0xFFFAF9F6),
+        appBarTheme: baseTheme.appBarTheme.copyWith(
+          backgroundColor: const Color(0xFFFAF9F6),
+          surfaceTintColor: const Color(0xFFFAF9F6),
+        ),
       ),
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: [
-          const ProductsScreen(
-            showAppBar: false,
-            showFloatingActions: false,
-            showDashboard: true,
-            showProductList: false,
+      child: Scaffold(
+        appBar: AppBar(
+          elevation: 0,
+          backgroundColor: const Color(0xFFFAF9F6),
+          surfaceTintColor: const Color(0xFFFAF9F6),
+          titleSpacing: 8,
+          leadingWidth: 280,
+          leading: _BusinessBrand(settings: settings),
+          title: _buildQuickNavigation(),
+          actions: [_buildUserMenu(), const SizedBox(width: 8)],
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(1),
+            child: Container(
+              height: 1,
+              color: colorScheme.primary.withValues(alpha: 0.18),
+            ),
           ),
-          const ProductsScreen(
-            showAppBar: false,
-            showDashboard: false,
-            showProductList: true,
-          ),
-          const SalesScreen(),
-          const SuppliersScreen(),
-          const ReportsScreen(),
-        ],
+        ),
+        body: IndexedStack(
+          index: _selectedIndex,
+          children: [
+            const ProductsScreen(
+              showAppBar: false,
+              showFloatingActions: false,
+              showDashboard: true,
+              showProductList: false,
+            ),
+            const ProductsScreen(
+              showAppBar: false,
+              showDashboard: false,
+              showProductList: true,
+            ),
+            const SalesScreen(),
+            const SuppliersScreen(),
+            const ReportsScreen(),
+          ],
+        ),
       ),
     );
   }
@@ -117,7 +140,7 @@ class _OfficeShellState extends State<OfficeShell> {
             label: Text(_destinations[index].label),
             style: TextButton.styleFrom(
               foregroundColor: _selectedIndex == index
-                  ? Colors.indigo
+                  ? Theme.of(context).colorScheme.primary
                   : Colors.grey.shade700,
               textStyle: TextStyle(
                 fontSize: 12,
@@ -152,12 +175,8 @@ class _OfficeShellState extends State<OfficeShell> {
           children: [
             CircleAvatar(
               radius: 16,
-              backgroundColor: Colors.indigo.shade50,
-              child: const Icon(
-                Icons.person_outline,
-                size: 19,
-                color: Colors.indigo,
-              ),
+              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+              child: const Icon(Icons.person_outline, size: 19),
             ),
             const SizedBox(width: 8),
             const Text(
@@ -198,21 +217,33 @@ class _BusinessBrand extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 12, right: 8),
-      child: Row(
-        children: [
-          _BusinessIcon(logoUrl: settings.logoUrl),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Text(
-              settings.businessName,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
-            ),
+    return Tooltip(
+      message: 'Return to login page',
+      child: InkWell(
+        onTap: () => Navigator.of(
+          context,
+        ).pushNamedAndRemoveUntil('/login', (_) => false),
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.only(left: 12, right: 8),
+          child: Row(
+            children: [
+              _BusinessIcon(logoUrl: settings.logoUrl),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  settings.businessName,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -230,17 +261,17 @@ class _BusinessIcon extends StatelessWidget {
       width: 38,
       height: 38,
       decoration: BoxDecoration(
-        color: Colors.indigo.shade50,
+        color: Theme.of(context).colorScheme.primaryContainer,
         borderRadius: BorderRadius.circular(10),
       ),
       clipBehavior: Clip.antiAlias,
       child: url.isEmpty
-          ? const Icon(Icons.business_outlined, color: Colors.indigo)
+          ? const Icon(Icons.business_outlined)
           : Image.network(
               url,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) =>
-                  const Icon(Icons.business_outlined, color: Colors.indigo),
+                  const Icon(Icons.business_outlined),
             ),
     );
   }

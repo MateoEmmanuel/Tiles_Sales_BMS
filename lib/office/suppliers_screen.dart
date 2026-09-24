@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import '../services/firebase_service.dart';
+import 'office_print_dialogs.dart';
 
 class SuppliersScreen extends StatefulWidget {
   const SuppliersScreen({super.key});
@@ -16,6 +17,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
   String _searchTerm = '';
   String _sort = 'a-z';
   String _statusFilter = 'all';
+  List<DocumentSnapshot<Map<String, dynamic>>> _latestSuppliers = const [];
 
   CollectionReference<Map<String, dynamic>> get _suppliers =>
       _firebaseService.getFirestore().collection('suppliers');
@@ -43,6 +45,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
+        _latestSuppliers = snapshot.data!.docs;
 
         final suppliers =
             snapshot.data!.docs.where((supplier) {
@@ -67,146 +70,163 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
               return _sort == 'a-z' ? result : -result;
             });
 
-        return Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final search = TextField(
-                    controller: _searchController,
-                    onChanged: (value) => setState(
-                      () => _searchTerm = value.trim().toLowerCase(),
-                    ),
-                    decoration: InputDecoration(
-                      labelText: 'Search suppliers',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: _searchTerm.isEmpty
-                          ? null
-                          : IconButton(
-                              tooltip: 'Clear search',
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() => _searchTerm = '');
-                              },
-                              icon: const Icon(Icons.clear),
-                            ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+        return Scaffold(
+          body: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final search = TextField(
+                      controller: _searchController,
+                      onChanged: (value) => setState(
+                        () => _searchTerm = value.trim().toLowerCase(),
                       ),
-                    ),
-                  );
-                  final sort = SizedBox(
-                    width: 180,
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _sort,
-                      decoration: const InputDecoration(
-                        labelText: 'Sort by',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: 'Search suppliers',
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: _searchTerm.isEmpty
+                            ? null
+                            : IconButton(
+                                tooltip: 'Clear search',
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() => _searchTerm = '');
+                                },
+                                icon: const Icon(Icons.clear),
+                              ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'a-z',
-                          child: Text('Company A-Z'),
+                    );
+                    final sort = SizedBox(
+                      width: 180,
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _sort,
+                        decoration: const InputDecoration(
+                          labelText: 'Sort by',
+                          border: OutlineInputBorder(),
                         ),
-                        DropdownMenuItem(
-                          value: 'z-a',
-                          child: Text('Company Z-A'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) setState(() => _sort = value);
-                      },
-                    ),
-                  );
-                  final status = SizedBox(
-                    width: 190,
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _statusFilter,
-                      decoration: const InputDecoration(
-                        labelText: 'Status',
-                        border: OutlineInputBorder(),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'a-z',
+                            child: Text('Company A-Z'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'z-a',
+                            child: Text('Company Z-A'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) setState(() => _sort = value);
+                        },
                       ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'all',
-                          child: Text('All suppliers'),
+                    );
+                    final status = SizedBox(
+                      width: 190,
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _statusFilter,
+                        decoration: const InputDecoration(
+                          labelText: 'Status',
+                          border: OutlineInputBorder(),
                         ),
-                        DropdownMenuItem(
-                          value: 'active',
-                          child: Text('Active only'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'inactive',
-                          child: Text('Inactive only'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() => _statusFilter = value);
-                        }
-                      },
-                    ),
-                  );
-                  final addButton = FilledButton.icon(
-                    onPressed: () => _openSupplierForm(),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add supplier'),
-                  );
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'all',
+                            child: Text('All suppliers'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'active',
+                            child: Text('Active only'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'inactive',
+                            child: Text('Inactive only'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() => _statusFilter = value);
+                          }
+                        },
+                      ),
+                    );
+                    final addButton = FilledButton.icon(
+                      onPressed: () => _openSupplierForm(),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add supplier'),
+                    );
+                    final printButton = FilledButton.icon(
+                      onPressed: () =>
+                          showSupplierPrintDialog(context, _latestSuppliers),
+                      icon: const Icon(Icons.print_outlined),
+                      label: const Text('Print supplier list'),
+                    );
 
-                  if (constraints.maxWidth < 620) {
-                    return Column(
+                    if (constraints.maxWidth < 620) {
+                      return Column(
+                        children: [
+                          search,
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(child: sort),
+                              const SizedBox(width: 10),
+                              Expanded(child: status),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                printButton,
+                                const SizedBox(width: 10),
+                                addButton,
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+
+                    return Row(
                       children: [
-                        search,
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(child: sort),
-                            const SizedBox(width: 10),
-                            Expanded(child: status),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: addButton,
-                        ),
+                        Expanded(child: search),
+                        const SizedBox(width: 12),
+                        sort,
+                        const SizedBox(width: 12),
+                        status,
+                        const SizedBox(width: 12),
+                        printButton,
+                        const SizedBox(width: 10),
+                        addButton,
                       ],
                     );
-                  }
-
-                  return Row(
-                    children: [
-                      Expanded(child: search),
-                      const SizedBox(width: 12),
-                      sort,
-                      const SizedBox(width: 12),
-                      status,
-                      const SizedBox(width: 12),
-                      addButton,
-                    ],
-                  );
-                },
+                  },
+                ),
               ),
-            ),
-            Expanded(
-              child: suppliers.isEmpty
-                  ? Center(
-                      child: Text(
-                        _searchTerm.isEmpty
-                            ? 'No suppliers yet'
-                            : 'No matching suppliers',
+              Expanded(
+                child: suppliers.isEmpty
+                    ? Center(
+                        child: Text(
+                          _searchTerm.isEmpty
+                              ? 'No suppliers yet'
+                              : 'No matching suppliers',
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                        itemCount: suppliers.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 10),
+                        itemBuilder: (context, index) =>
+                            _supplierCard(suppliers[index]),
                       ),
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                      itemCount: suppliers.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) =>
-                          _supplierCard(suppliers[index]),
-                    ),
-            ),
-          ],
+              ),
+            ],
+          ),
         );
       },
     );
@@ -222,21 +242,31 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
     return Card(
       elevation: 0,
       margin: EdgeInsets.zero,
+      color: isActive ? null : Colors.grey.shade100,
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
         leading: CircleAvatar(
-          backgroundColor: Colors.teal.shade50,
-          child: const Icon(Icons.local_shipping_outlined, color: Colors.teal),
+          backgroundColor: isActive
+              ? Colors.teal.shade50
+              : Colors.grey.shade200,
+          child: Icon(
+            Icons.local_shipping_outlined,
+            color: isActive ? Colors.teal : Colors.grey,
+          ),
         ),
         title: Text(
           company,
-          style: const TextStyle(fontWeight: FontWeight.w700),
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: isActive ? null : Colors.grey.shade600,
+          ),
         ),
         onTap: () => _showSupplier(supplier),
         subtitle: Text(
           '$contact  •  $phone',
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
+          style: TextStyle(color: isActive ? null : Colors.grey),
         ),
         trailing: Wrap(
           crossAxisAlignment: WrapCrossAlignment.center,
